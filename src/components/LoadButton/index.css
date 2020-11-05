@@ -1,0 +1,17 @@
+.LoadButton {
+  border: none;
+  color: white;
+  width: 400px;
+  height: 300px;
+  text-align: center;
+  text-decoration: none;
+  display: inline-block;
+  font-size: 50px;
+  border-radius: 12px;
+  opacity: 1;
+  transition: 0.3s;
+}
+
+.LoadButton:disabled {opacity: 0.5}
+
+.LoadButton:hover:enabled {opacity: 0.8}

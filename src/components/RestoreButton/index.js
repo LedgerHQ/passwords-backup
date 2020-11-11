@@ -1,41 +1,31 @@
-import React, { useEffect, useRef, useCallback, useState } from "react";
+import React, { useRef, useCallback, useState } from "react";
 import './index.css';
 
-function LoadButton({ text, color, onClick }) {
+function RestoreButton({ text, color, disabled, hidden, onClick }) {
     const [isLoading, setLoading] = useState(false);
-    const [fileData, setFileData] = useState();
     const file = useRef(null);
 
-    useEffect(() => {
-        if (isLoading) {
-            onClick(fileData).then(() => {
-                setLoading(false);
-            });
-        }
-    }, [isLoading, fileData, onClick]);
-
     const onTriggerFileSelect = useCallback(() => {
+        setLoading(true);
         file.current && file.current.click();
     }, []);
 
     const onSelectedFileChanged = useCallback((event) => {
         event.target.files[0].text().then((text) => {
             event.target.value = '';
-            setFileData(text);
-            setLoading(true);
+            onClick(text).then(() => setLoading(false));
         });
-    }, []);
+    }, [onClick]);
 
     return (
         <button
-            className="LoadButton"
-            disabled={isLoading}
+            className="RestoreButton"
+            disabled={isLoading | disabled}
             onClick={isLoading ? null : onTriggerFileSelect}
-            style={{ "margin": "10px", "backgroundColor": color }}
+            style={{ "margin": "10px", "backgroundColor": color, "display": hidden ? "none" : true }}
         >
             {isLoading ? 'Loading…' : text}
             <input
-                id={`selectedFile_${text}`}
                 type="file"
                 ref={file}
                 onChange={onSelectedFileChanged}
@@ -46,4 +36,4 @@ function LoadButton({ text, color, onClick }) {
     );
 }
 
-export default LoadButton
+export default RestoreButton

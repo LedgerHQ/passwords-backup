@@ -1,27 +1,27 @@
 import TransportWebUSB from "@ledgerhq/hw-transport-webusb";
-import { listen } from "@ledgerhq/logs";
 
-export const GET_VERSION_COMMAND = 0x03;
-export const GET_APP_NAME_COMMAND = 0x04;
-export const DUMP_METADATAS_COMMAND = 0x05;
-export const LOAD_METADATAS_COMMAND = 0x06;
+const GET_APP_INFO_COMMAND = 0x01;
+const GET_APP_CONFIG_COMMAND = 0x03;
+const DUMP_METADATAS_COMMAND = 0x04;
+const LOAD_METADATAS_COMMAND = 0x05;
 
 class PasswordsManager {
-    constructor(metadatas_size_on_device = 4096) {
+    constructor() {
         this.allowedStatuses = [0x9000, 0x6985, 0x6A86, 0x6A87, 0x6D00, 0x6E00, 0xB000];
         this.connected = false;
-        this.metadatas_size_on_device = metadatas_size_on_device;
-        this.metadatas = new Buffer.alloc(metadatas_size_on_device);
-        this.busy = false
+        this.busy = false;
+        this.transport = null;
     }
 
     async connect() {
         if (!this.connected) {
-            this.transport = await TransportWebUSB.create();
+            if (!this.transport) this.transport = await TransportWebUSB.create();
             try {
-                this.version = await this.getVersion();
-                let appName = await this.getAppName();
-                if (appName.toString() !== "Passwords") throw new Error(appName);
+                const [appName, version] = await this.getAppInfo();
+                if (appName.toString() !== "Passwords") throw new Error("The Passwords app is not opened on the device");
+                this.version = version;
+                let appConfig = await this.getAppConfig();
+                this.storage_size = appConfig["storage_size"];
                 this.connected = true;
             }
             catch (error) {
@@ -31,12 +31,14 @@ class PasswordsManager {
             }
         }
     }
+
     isSuccess(result) {
         return result.length >= 2 && result.readUInt16BE(result.length - 2) === 0x9000;
     }
 
     disconnect() {
         this.connected = false;
+        this.transport = null;
     }
 
     mapProtocolError(result) {
@@ -48,7 +50,8 @@ class PasswordsManager {
             0x6A87: "SW_WRONG_DATA_LENGTH",
             0x6D00: "SW_INS_NOT_SUPPORTED",
             0x6E00: "SW_CLA_NOT_SUPPORTED",
-            0xB000: "SW_APPNAME_TOO_LONG"
+            0xB000: "SW_APPNAME_TOO_LONG",
+            0x6F10: "SW_METADATAS_PARSING_ERROR"
         }
 
         let error = result.readUInt16BE(result.length - 2);
@@ -57,73 +60,37 @@ class PasswordsManager {
         }
     }
 
-    async dispatchRequest(request, args) {
-        if (this.busy) {
-            throw new Error("Device is busy");
-        }
+    _lock() {
+        if (this.busy) throw new Error("Device is busy");
         this.busy = true;
-
-        let response;
-        try {
-            switch (request) {
-                case GET_VERSION_COMMAND:
-                    response = await this.getVersion();
-                    break;
-
-                case GET_APP_NAME_COMMAND:
-                    response = await this.getAppName();
-                    break;
-
-                case DUMP_METADATAS_COMMAND:
-                    response = await this.dump_metadatas();
-                    break;
-
-                case LOAD_METADATAS_COMMAND:
-                    this._toBytes(args);
-                    await this.load_metadatas();
-                    break;
-
-                default:
-                    throw new Error("Unknown instruction");
-            }
-        }
-        finally {
-            this.busy = false;
-        }
-        return response;
     }
 
-    async getVersion() {
-        let result = await this.transport.send(0xE0, GET_VERSION_COMMAND, 0x00, 0x00, Buffer(0), this.allowedStatuses);
-        if (!this.isSuccess(result)) this.mapProtocolError(result);
-        return result.slice(0, result.length - 2);
-    }
-
-    async getAppName() {
-        let result = await this.transport.send(0xE0, GET_APP_NAME_COMMAND, 0x00, 0x00, Buffer(0), this.allowedStatuses);
-        if (!this.isSuccess(result)) this.mapProtocolError(result);
-        return result.slice(0, result.length - 2);
+    _unlock() {
+        this.busy = false;
     }
 
     _toBytes(json_metadatas) {
-        let metadatas = this.metadatas;
+        let metadatas = Buffer.alloc(this.storage_size);
         let parsed_metadatas = JSON.parse(json_metadatas)["parsed"];
         let offset = 0;
         parsed_metadatas.forEach(element => {
             let nickname = element["nickname"];
             let charsets = element["charsets"];
             if (nickname.length > 19) throw new Error(`Nickname too long (19 max): ${nickname} has length ${nickname.length}`);
+            if (offset + 3 + nickname.length >= this.storage_size) throw new Error(`Not enough memory on this device to restore this backup`);
             metadatas[offset++] = nickname.length + 1;
             metadatas[offset++] = 0x00;
             metadatas[offset++] = charsets;
             metadatas.write(nickname, offset);
             offset += nickname.length;
         });
+        // mark free space at the end of the buffer
+        metadatas[offset++] = 0x00;
+        metadatas[offset++] = 0x00;
+        return metadatas
     }
 
-    _toJSON() {
-
-        let metadatas = this.metadatas;
+    _toJSON(metadatas) {
         let metadatas_list = [];
         let erased_list = [];
         let offset = 0;
@@ -161,27 +128,84 @@ class PasswordsManager {
         if (!this.isSuccess(result)) this.mapProtocolError(result);
         return result;
     }
-
-    async dump_metadatas() {
-        this.metadatas = Buffer.alloc(0)
-        while (this.metadatas.length < this.metadatas_size_on_device) {
-            let result = await this.transport.send(0xE0, DUMP_METADATAS_COMMAND, 0x00, 0x00, Buffer(0), this.allowedStatuses);
+    async getAppInfo() {
+        this._lock();
+        try {
+            let result = await this.transport.send(0xB0, GET_APP_INFO_COMMAND, 0x00, 0x00, Buffer(0), this.allowedStatuses);
             if (!this.isSuccess(result)) this.mapProtocolError(result);
-            this.metadatas = Buffer.concat([this.metadatas, Buffer.from(result.slice(1, -2))]);
-            if (result[0] === 0xFF && this.metadatas.length < this.metadatas_size_on_device) {
-                throw new Error(`${this.metadatas_size_on_device} bytes requested but only ${this.metadatas.length} bytes available`);
+
+            result = result.slice(0, result.length - 2);
+            let app_name, app_version;
+            try {
+                let offset = 1;
+                let app_name_length = result[offset++];
+                app_name = result.slice(offset, offset + app_name_length).toString();
+                offset += app_name_length;
+                let app_version_length = result[offset++];
+                app_version = result.slice(offset, offset + app_version_length).toString();
+                return [app_name, app_version];
+            }
+            catch (error) {
+                throw new Error(`Unexpected result from device, parsing error: ${error}`);
             }
         }
-        return this._toJSON();
+        finally {
+            this._unlock();
+        }
     }
 
-    async load_metadatas() {
-        if (this.metadatas.length === 0) {
-            throw new Error("No data to load");
+    async getAppConfig() {
+        this._lock();
+        try {
+            let result = await this.transport.send(0xE0, GET_APP_CONFIG_COMMAND, 0x00, 0x00, Buffer(0), this.allowedStatuses);
+            if (!this.isSuccess(result)) this.mapProtocolError(result);
+            result = result.slice(0, result.length - 2);
+            if (result.length !== 6) throw new Error(`Can't parse app config of length ${result.length}`);
+
+            let storage_size = result.readUInt32BE(0, 4);
+            let keyboard_type = result[4];
+            let press_enter_after_typing = result[5];
+            return { storage_size, keyboard_type, press_enter_after_typing };
         }
-        for (let i = 0; i < this.metadatas.length; i += 0xFF) {
-            let chunk = this.metadatas.slice(i, i + 0xFF);
-            await this._load_metadatas_chunk(chunk, i + chunk.length === this.metadatas.length ? true : false)
+        finally {
+            this._unlock();
+        }
+    }
+
+
+    async dump_metadatas() {
+        this._lock();
+        try {
+            let metadatas = Buffer.alloc(0)
+            while (metadatas.length < this.storage_size) {
+                let result = await this.transport.send(0xE0, DUMP_METADATAS_COMMAND, 0x00, 0x00, Buffer(0), this.allowedStatuses);
+                if (!this.isSuccess(result)) this.mapProtocolError(result);
+                metadatas = Buffer.concat([metadatas, Buffer.from(result.slice(1, -2))]);
+                if (result[0] === 0xFF && metadatas.length < this.storage_size) {
+                    throw new Error(`${this.storage_size} bytes requested but only ${metadatas.length} bytes available`);
+                }
+            }
+            return this._toJSON(metadatas);
+        }
+        finally {
+            this._unlock();
+        }
+    }
+
+    async load_metadatas(JSON_metadatas) {
+        this._lock();
+        try {
+            let metadatas = this._toBytes(JSON_metadatas);
+            if (metadatas.length === 0) {
+                throw new Error("No data to load");
+            }
+            for (let i = 0; i < metadatas.length; i += 0xFF) {
+                let chunk = metadatas.slice(i, i + 0xFF);
+                await this._load_metadatas_chunk(chunk, i + chunk.length === metadatas.length ? true : false)
+            }
+        }
+        finally {
+            this._unlock();
         }
     }
 

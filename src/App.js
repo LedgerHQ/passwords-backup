@@ -1,49 +1,73 @@
+import React, { useState } from "react";
 import logo from './logo.svg';
-import LoadButton from './components/LoadButton';
-import DownloadButton from './components/DownloadButton';
-import PasswordsManager, { DUMP_METADATAS_COMMAND, LOAD_METADATAS_COMMAND } from "./controller/PasswordsManager.js";
+import RestoreButton from './components/RestoreButton';
+import BackupButton from './components/BackupButton';
+import PasswordsManager from "./controller/PasswordsManager.js";
+import AppExplanations from "./components/AppExplanations";
 import { ToastContainer, toast } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
+import { listen } from "@ledgerhq/logs";
+import packageJson from '../package.json';
 import './App.css';
 
-function ask_device(device_handler, request, args = {}) {
-  return new Promise(async (resolve) => {
-    let result = null;
-    try {
-      if (!device_handler.connected) {
-        await device_handler.connect();
-      }
-      toast.info("Approve action on your device ✨", { autoClose: false });
-      result = await device_handler.dispatchRequest(request, args);
-
-      toast.dismiss();
-      toast.success("Success ✅");
-    }
-    catch (error) {
-      device_handler.disconnect()
-      toast.dismiss();
-      toast.error(`${error.toString()} 🙅`);
-    }
-    finally {
-      resolve(result);
-    }
-  });
-}
+listen(log => { console.log(log) });
 
 function App() {
-  const passwordsManager = new PasswordsManager()
+
+  function ask_device(device_handler, request) {
+    return new Promise(async (resolve) => {
+      let result = null;
+      try {
+        if (!device_handler.connected) {
+          await device_handler.connect();
+          setConnected(true);
+          toast.info("Device connected 👌", { autoClose: false });
+        }
+        if (request) {
+          toast.info("Approve action on your device ✨", { autoClose: false });
+          setBusy(true);
+          result = await request();
+
+          toast.dismiss();
+          toast.success("Success 🦄");
+        }
+      }
+      catch (error) {
+        device_handler.disconnect()
+        setConnected(false);
+        toast.dismiss();
+        toast.error(`${error.toString()} 🙅`);
+      }
+      finally {
+        setBusy(false);
+        resolve(result);
+      }
+    });
+  }
+
+  // const  = new PasswordsManager(true);
+
+  const [isBusy, setBusy] = useState(false);
+  const [isConnected, setConnected] = useState(false);
+  const [passwordsManager] = useState(new PasswordsManager(true));
+
   return (
     <div className="App">
       <ToastContainer hideProgressBar={true} />
-      <header className="App-header">
+      <div className="App-banner">
         <img src={logo} className="App-logo" alt="logo" />
+        <p className="App-title">Passwords Backup</p>
+      </div>
+      <header className="App-header">
         <div className="Commands">
-          <DownloadButton text="Backup" color="#41ccb4" onClick={() => ask_device(passwordsManager, DUMP_METADATAS_COMMAND)} />
-          <LoadButton text="Restore" color="#FFB86D" onClick={(metadatas) => ask_device(passwordsManager, LOAD_METADATAS_COMMAND, metadatas)} />
+          <BackupButton text="Backup" color="#41ccb4" disabled={isBusy} hidden={!isConnected} onClick={() => ask_device(passwordsManager, () => passwordsManager.dump_metadatas())} />
+          <RestoreButton text="Restore" color="#FFB86D" disabled={isBusy} hidden={!isConnected} onClick={(metadatas) => ask_device(passwordsManager, () => passwordsManager.load_metadatas(metadatas))} />
+          <BackupButton text="Connect" color="#41ccb4" disabled={isBusy} hidden={isConnected} onClick={() => ask_device(passwordsManager)} />
         </div>
-        <p>
-          Here is a little blob to explain how to use this website to backup and restore you password app.
-        </p>
+        <AppExplanations></AppExplanations>
+        <div className="App-footer">
+          <p>A modest Web App built at Ledger with React, hosted by Github. v{`${packageJson.version}`}. <a href="https://github.com/LedgerHQ/passwords-backup">PRs welcomed and appreciated ✨</a></p>
+        </div>
       </header>
     </div>
   );

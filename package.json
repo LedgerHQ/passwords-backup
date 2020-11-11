@@ -1,15 +1,18 @@
 {
-  "name": "passwords-companion",
+  "name": "passwords-backup",
   "version": "0.1.0",
   "private": true,
-  "homepage": "http://tamtamhero.github.io/passwords-companion",
+  "homepage": "https://TamtamHero.github.io/passwords-backup",
   "dependencies": {
     "@ledgerhq/hw-transport-webusb": "^5.28.0",
     "@testing-library/jest-dom": "^5.11.4",
     "@testing-library/react": "^11.1.0",
     "@testing-library/user-event": "^12.1.10",
+    "install": "^0.13.0",
     "react": "^17.0.1",
+    "react-accessible-accordion": "^3.3.3",
     "react-dom": "^17.0.1",
+    "react-markdown": "^5.0.2",
     "react-scripts": "4.0.0",
     "react-toastify": "^6.0.9",
     "web-vitals": "^0.2.4"

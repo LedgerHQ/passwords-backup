@@ -5,8 +5,14 @@ function RestoreButton({ text, color, disabled, hidden, onClick }) {
     const [isLoading, setLoading] = useState(false);
     const file = useRef(null);
 
+    const hasFileInputBeenCanceled = () => {
+        if (!file.current.value.length) setLoading(false);
+        document.body.onfocus = null;
+    }
+
     const onTriggerFileSelect = useCallback(() => {
         setLoading(true);
+        document.body.onfocus = hasFileInputBeenCanceled;
         file.current && file.current.click();
     }, []);
 

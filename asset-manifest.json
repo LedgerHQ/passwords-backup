@@ -1,8 +1,8 @@
 {
   "files": {
     "main.css": "/passwords-backup/static/css/main.1c57864a.chunk.css",
-    "main.js": "/passwords-backup/static/js/main.d5d878f1.chunk.js",
-    "main.js.map": "/passwords-backup/static/js/main.d5d878f1.chunk.js.map",
+    "main.js": "/passwords-backup/static/js/main.5b79e284.chunk.js",
+    "main.js.map": "/passwords-backup/static/js/main.5b79e284.chunk.js.map",
     "runtime-main.js": "/passwords-backup/static/js/runtime-main.229c84fd.js",
     "runtime-main.js.map": "/passwords-backup/static/js/runtime-main.229c84fd.js.map",
     "static/css/2.83342f34.chunk.css": "/passwords-backup/static/css/2.83342f34.chunk.css",
@@ -19,6 +19,6 @@
     "static/css/2.83342f34.chunk.css",
     "static/js/2.be958ff9.chunk.js",
     "static/css/main.1c57864a.chunk.css",
-    "static/js/main.d5d878f1.chunk.js"
+    "static/js/main.5b79e284.chunk.js"
   ]
 }

@@ -31,7 +31,8 @@ export default function AppExplanations() {
     // eslint-disable-next-line
     "This Web App allows you to backup/restore the list of `password nicknames` stored inside the `Passwords app` on your Ledger Nano S/ Nano X.  \n\
     It is useful to have such a backup when you update the Passwords app on your device, or the device firmware, because the list gets erased. Another case where it's practical to have a nickname backup is when you loose your device: Restoring the [24-words recovery phrase](https://www.ledger.com/academy/crypto/what-is-a-recovery-phrase) is necessary but not sufficient to restore your passwords, you need your nickname list as well.  \n\
-    The backup consists in a human readable `backup.json` file containing a dump of the 4096 bytes of application storage.";
+    The backup consists in a human readable `backup.json` file containing a dump of the 4096 bytes of application storage.  \n\
+    Note that all operations of this Web App are done locally on your computer, there are no external communications occuring.";
 
   const whatIsTheLedgerPasswordsApp_help =
     "Look [here](https://github.com/LedgerHQ/app-passwords/blob/master/README.md) for more information on the device application itself.";

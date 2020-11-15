@@ -10,6 +10,7 @@ import { listen } from "@ledgerhq/logs";
 import packageJson from '../package.json';
 import './App.css';
 
+const passwordsManager = new PasswordsManager();
 listen(log => { console.log(log) });
 
 function App() {
@@ -49,7 +50,6 @@ function App() {
 
   const [isBusy, setBusy] = useState(false);
   const [isConnected, setConnected] = useState(false);
-  const [passwordsManager] = useState(new PasswordsManager(true));
 
   return (
     <div className="App">

@@ -1,9 +1,24 @@
 import TransportWebUSB from "@ledgerhq/hw-transport-webusb";
 
-const GET_APP_INFO_COMMAND = 0x01;
-const GET_APP_CONFIG_COMMAND = 0x03;
-const DUMP_METADATAS_COMMAND = 0x04;
-const LOAD_METADATAS_COMMAND = 0x05;
+const insAPDU = Object.freeze({
+    "GET_APP_INFO_COMMAND": 0x01,
+    "GET_APP_CONFIG_COMMAND": 0x03,
+    "DUMP_METADATAS_COMMAND": 0x04,
+    "LOAD_METADATAS_COMMAND": 0x05
+});
+
+const passwordsCharsets = Object.freeze({
+    "UPPERCASE": 1,
+    "LOWERCASE": 2,
+    "NUMBERS": 4,
+    "MINUS": 8,
+    "UNDERLINE": 16,
+    "SPACE": 32,
+    "SPECIAL": 64,
+    "BRACKETS": 128,
+});
+
+const allPasswordsCharsets = 0xFF;
 
 class PasswordsManager {
     constructor() {
@@ -69,13 +84,35 @@ class PasswordsManager {
         this.busy = false;
     }
 
+    _charsetListToBitmask(charsets) {
+        let bitmask = 0x00;
+        for (const charset of charsets) {
+            bitmask |= passwordsCharsets[charset];
+        }
+        if (bitmask === 0x00) bitmask = allPasswordsCharsets;
+        return bitmask;
+    }
+
+    _bitmaskToCharsetList(bitmask) {
+        let charsetList = [];
+        if (bitmask === 0x00 || bitmask === allPasswordsCharsets) {
+            charsetList.push("ALL_SETS");
+        }
+        else {
+            for (const charset in passwordsCharsets) {
+                if (passwordsCharsets[charset] & bitmask) charsetList.push(charset);
+            }
+        }
+        return charsetList;
+    }
+
     _toBytes(json_metadatas) {
         let metadatas = Buffer.alloc(this.storage_size);
         let parsed_metadatas = JSON.parse(json_metadatas)["parsed"];
         let offset = 0;
         parsed_metadatas.forEach(element => {
             let nickname = element["nickname"];
-            let charsets = element["charsets"];
+            let charsets = this._charsetListToBitmask(element["charsets"]);
             if (nickname.length > 19) throw new Error(`Nickname too long (19 max): ${nickname} has length ${nickname.length}`);
             if (offset + 3 + nickname.length >= this.storage_size) throw new Error(`Not enough memory on this device to restore this backup`);
             metadatas[offset++] = nickname.length + 1;
@@ -101,18 +138,11 @@ class PasswordsManager {
             let erased = metadatas[offset + 1] === 0xFF ? true : false;
             let charsets = metadatas[offset + 2];
             if (len > 19 + 1) corruptions += [offset, `nickname too long ${len}, max is 19`]
-            if (!erased) {
-                metadatas_list.push({
-                    "nickname": metadatas.slice(offset + 3, offset + 2 + len).toString(),
-                    "charsets": charsets
-                });
-            }
-            else {
-                erased_list.push({
-                    "nickname": metadatas.slice(offset + 3, offset + 2 + len).toString(),
-                    "charsets": charsets
-                });
-            }
+            let metadata = {
+                "nickname": metadatas.slice(offset + 3, offset + 2 + len).toString(),
+                "charsets": this._bitmaskToCharsetList(charsets)
+            };
+            erased ? erased_list.push(metadata) : metadatas_list.push(metadata);
             offset += len + 2;
         }
         return {
@@ -124,14 +154,14 @@ class PasswordsManager {
     }
 
     async _load_metadatas_chunk(chunk, is_last) {
-        let result = await this.transport.send(0xE0, LOAD_METADATAS_COMMAND, is_last ? 0xFF : 0x00, 0x00, Buffer.from(chunk), this.allowedStatuses);
+        let result = await this.transport.send(0xE0, insAPDU.LOAD_METADATAS_COMMAND, is_last ? 0xFF : 0x00, 0x00, Buffer.from(chunk), this.allowedStatuses);
         if (!this.isSuccess(result)) this.mapProtocolError(result);
         return result;
     }
     async getAppInfo() {
         this._lock();
         try {
-            let result = await this.transport.send(0xB0, GET_APP_INFO_COMMAND, 0x00, 0x00, Buffer(0), this.allowedStatuses);
+            let result = await this.transport.send(0xB0, insAPDU.GET_APP_INFO_COMMAND, 0x00, 0x00, Buffer(0), this.allowedStatuses);
             if (!this.isSuccess(result)) this.mapProtocolError(result);
 
             result = result.slice(0, result.length - 2);
@@ -157,7 +187,7 @@ class PasswordsManager {
     async getAppConfig() {
         this._lock();
         try {
-            let result = await this.transport.send(0xE0, GET_APP_CONFIG_COMMAND, 0x00, 0x00, Buffer(0), this.allowedStatuses);
+            let result = await this.transport.send(0xE0, insAPDU.GET_APP_CONFIG_COMMAND, 0x00, 0x00, Buffer(0), this.allowedStatuses);
             if (!this.isSuccess(result)) this.mapProtocolError(result);
             result = result.slice(0, result.length - 2);
             if (result.length !== 6) throw new Error(`Can't parse app config of length ${result.length}`);
@@ -178,7 +208,7 @@ class PasswordsManager {
         try {
             let metadatas = Buffer.alloc(0)
             while (metadatas.length < this.storage_size) {
-                let result = await this.transport.send(0xE0, DUMP_METADATAS_COMMAND, 0x00, 0x00, Buffer(0), this.allowedStatuses);
+                let result = await this.transport.send(0xE0, insAPDU.DUMP_METADATAS_COMMAND, 0x00, 0x00, Buffer(0), this.allowedStatuses);
                 if (!this.isSuccess(result)) this.mapProtocolError(result);
                 metadatas = Buffer.concat([metadatas, Buffer.from(result.slice(1, -2))]);
                 if (result[0] === 0xFF && metadatas.length < this.storage_size) {

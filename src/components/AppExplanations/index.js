@@ -30,7 +30,8 @@ export default function AppExplanations() {
   const whatIsThisWebApp_help =
     // eslint-disable-next-line
     "This Web App allows you to backup/restore the list of `password nicknames` stored inside the `Passwords app` on your Ledger Nano S/ Nano X.  \n\
-    It is useful to have such a backup when you update the Passwords app on your device, or the device firmware, because the list gets erased. Another case where it's practical to have a nickname backup is when you loose your device: Restoring the [24-words recovery phrase](https://www.ledger.com/academy/crypto/what-is-a-recovery-phrase) is necessary but not sufficient to restore your passwords, you need your nickname list as well.";
+    It is useful to have such a backup when you update the Passwords app on your device, or the device firmware, because the list gets erased. Another case where it's practical to have a nickname backup is when you loose your device: Restoring the [24-words recovery phrase](https://www.ledger.com/academy/crypto/what-is-a-recovery-phrase) is necessary but not sufficient to restore your passwords, you need your nickname list as well.  \n\
+    The backup consists in a human readable `backup.json` file containing a dump of the 4096 bytes of application storage.";
 
   const whatIsTheLedgerPasswordsApp_help =
     "Look [here](https://github.com/LedgerHQ/app-passwords/blob/master/README.md) for more information on the device application itself.";
@@ -43,6 +44,10 @@ export default function AppExplanations() {
 
   const whichbrowsersAreSupported_help =
     "The communication with the device is done through `WebUSB`, which is curently supported only on `Google Chrome` / `Chromium` / `Brave` for `Linux` and `MacOS`. On `Windows`, [Zadig](https://github.com/WICG/webusb/issues/143) is required.";
+
+  const lessCommonUseCases_help =
+    // eslint-disable-next-line
+    "* If you ever encounter a WTF-kind of error with your passwords app (some or all of your entries are suddenly gone? A password has changed ?), it is wise to first come here and make a backup. You can then have a look inside the backup file to see if something is wrong (You might also want to create an issue [here](https://github.com/LedgerHQ/app-passwords/issues) so we fix your issue for all users). \n* If you want to add a lot of new passwords, the manual input on the device keyboard will show its limits. You can instead create a backup and edit it manually to add all your new entries. You just have to restore your app with this file and the job is done :)";
 
   return (
     <Accordion allowZeroExpanded allowMultipleExpanded onChange={handleExpand}>
@@ -91,6 +96,17 @@ export default function AppExplanations() {
           <ReactMarkdown
             className="Explanations"
             children={whichbrowsersAreSupported_help}
+          ></ReactMarkdown>
+        </AccordionItemPanel>
+      </AccordionItem>
+      <AccordionItem>
+        <AccordionItemHeading>
+          <AccordionItemButton>Less common use cases</AccordionItemButton>
+        </AccordionItemHeading>
+        <AccordionItemPanel>
+          <ReactMarkdown
+            className="Explanations"
+            children={lessCommonUseCases_help}
           ></ReactMarkdown>
         </AccordionItemPanel>
       </AccordionItem>

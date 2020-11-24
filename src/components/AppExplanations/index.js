@@ -44,7 +44,7 @@ export default function AppExplanations() {
     * `Restore` will prompt a file input dialog where you should indicate a previous backup file. A prompt (`"Overwite metadatas ?"`) will then request your approval on your device. Done.';
 
   const whichbrowsersAreSupported_help =
-    "The communication with the device is done through `WebUSB`, which is curently supported only on `Google Chrome` / `Chromium` / `Brave` for `Linux` and `MacOS`. On `Windows`, [Zadig](https://github.com/WICG/webusb/issues/143) is required.";
+    "The communication with the device is done through `WebUSB`, which is curently supported only on `Google Chrome` / `Chromium` / `Brave` for `Linux` and `MacOS`. On `Windows`, you need to first go to `chrome://flags` then search for `Enable new USB backend`, disable it and relaunch Chrome.";
 
   const lessCommonUseCases_help =
     // eslint-disable-next-line
@@ -90,7 +90,7 @@ export default function AppExplanations() {
       <AccordionItem>
         <AccordionItemHeading>
           <AccordionItemButton>
-            Which web browsers are supported ?
+            Which web browsers and operating systems are supported ?
           </AccordionItemButton>
         </AccordionItemHeading>
         <AccordionItemPanel>

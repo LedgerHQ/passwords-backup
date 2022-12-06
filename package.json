@@ -4,7 +4,7 @@
   "private": true,
   "homepage": "https://ledgerhq.github.io/passwords-backup",
   "dependencies": {
-    "@ledgerhq/hw-transport-webusb": "^5.28.0",
+    "@ledgerhq/hw-transport-webusb": "^6.20.0",
     "install": "^0.13.0",
     "react": "^17.0.1",
     "react-accessible-accordion": "^3.3.3",

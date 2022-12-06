@@ -2,6 +2,7 @@
   "name": "passwords-backup",
   "version": "0.1.0",
   "private": true,
+  "homepage": "https://ledgerhq.github.io/passwords-backup",
   "dependencies": {
     "@ledgerhq/hw-transport-webusb": "^6.20.0",
     "install": "^0.13.0",

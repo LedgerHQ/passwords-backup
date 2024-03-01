@@ -1,3 +1,11 @@
+> [!WARNING]
+> :warning: This repository is archived and not updated anymore.
+>
+> The backup Web-app sources now lie into the [app-passwords repository](https://github.com/LedgerHQ/app-passwords)
+> (`./clients/wui/` directory).
+>
+> Live Web-app (from `develop` branch) is deployed [here](https://ledgerhq.github.io/app-passwords/).
+
 # Passwords Backup
 
 [Live demo here](https://blog.ledger.com/passwords-backup/)
